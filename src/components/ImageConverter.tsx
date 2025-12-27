@@ -9,6 +9,7 @@ export const ImageConverter: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [blockCount, setBlockCount] = useState<number | null>(null);
   const [sValue, setSValue] = useState<number>(-0.1);
+  const [warning, setWarning] = useState<string | null>(null);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -16,10 +17,26 @@ export const ImageConverter: React.FC = () => {
 
     const url = URL.createObjectURL(file);
     setPreviewUrl(url);
+    setWarning(null);
+    setBlockCount(null);
+    setJsonOutput('');
     
     try {
       const bitmap = await createImageBitmap(file);
       setImageBitmap(bitmap);
+
+      let { width, height } = bitmap;
+      // Apply same scaling logic as generateJson to be accurate
+      if (width > MAX_BLOCKS || height > MAX_BLOCKS) {
+          const scale = Math.min(MAX_BLOCKS / width, MAX_BLOCKS / height);
+          width = Math.floor(width * scale);
+          height = Math.floor(height * scale);
+      }
+      const totalBlocks = width * height;
+
+      if (totalBlocks > 2000) {
+          setWarning(`Warning: This image will generate approximately ${totalBlocks} blocks. Levels with more than 2000 blocks may cause lag.`);
+      }
     } catch (error) {
       console.error("Error creating image bitmap:", error);
     }
@@ -160,6 +177,20 @@ export const ImageConverter: React.FC = () => {
       {previewUrl && (
         <div className="preview">
           <img src={previewUrl} alt="Preview" style={{ maxWidth: '300px', display: 'block', margin: '1em 0' }} />
+        </div>
+      )}
+
+      {warning && (
+        <div style={{ 
+          backgroundColor: 'rgba(255, 193, 7, 0.1)', 
+          border: '1px solid #ffc107', 
+          color: '#ffc107', 
+          padding: '10px', 
+          borderRadius: '4px', 
+          marginBottom: '15px',
+          fontSize: '0.9em'
+        }}>
+          {warning}
         </div>
       )}
 
