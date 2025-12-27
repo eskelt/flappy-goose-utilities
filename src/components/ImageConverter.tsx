@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 
 const MAX_BLOCKS = 2000;
-const PIXEL_SPACING = 5;
 
 export const ImageConverter: React.FC = () => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -9,6 +8,7 @@ export const ImageConverter: React.FC = () => {
   const [imageBitmap, setImageBitmap] = useState<ImageBitmap | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [blockCount, setBlockCount] = useState<number | null>(null);
+  const [sValue, setSValue] = useState<number>(-0.1);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -52,6 +52,10 @@ export const ImageConverter: React.FC = () => {
         ctx.drawImage(imageBitmap, 0, 0, width, height);
         const imgData = ctx.getImageData(0, 0, width, height).data;
 
+        // Calculate pixel spacing based on sValue
+        // Base reference: s = -0.1 corresponds to spacing = 4
+        const pixelSpacing = Math.abs(4 * (sValue / -0.1));
+
         const genericObjects = [];
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
@@ -65,10 +69,10 @@ export const ImageConverter: React.FC = () => {
             
             genericObjects.push({
                 type: 'colorBlock',
-                x: x * PIXEL_SPACING,
-                y: y * PIXEL_SPACING,
+                x: x * pixelSpacing,
+                y: y * pixelSpacing,
                 color: `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`,
-                s: -0.1
+                s: sValue
             });
             }
         }
@@ -139,6 +143,18 @@ export const ImageConverter: React.FC = () => {
       <h2>Convert Image to Json level</h2>
       <div className="input-group">
         <input type="file" accept="image/*" onChange={handleFileChange} />
+      </div>
+
+      <div className="input-group" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}>
+        <label htmlFor="s-value">Block Scale (s):</label>
+        <input 
+          id="s-value"
+          type="number" 
+          step="0.1" 
+          value={sValue} 
+          onChange={(e) => setSValue(parseFloat(e.target.value))}
+          style={{ padding: '5px', borderRadius: '4px', border: '1px solid #444', background: '#1a1a1a', color: 'white' }}
+        />
       </div>
       
       {previewUrl && (
