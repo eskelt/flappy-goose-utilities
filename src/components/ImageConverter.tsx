@@ -10,6 +10,17 @@ export const ImageConverter: React.FC = () => {
   const [blockCount, setBlockCount] = useState<number | null>(null);
   const [sValue, setSValue] = useState<number>(-0.1);
   const [warning, setWarning] = useState<string | null>(null);
+  const [offsetX, setOffsetX] = useState<number>(200);
+  const [offsetY, setOffsetY] = useState<number>(300);
+
+  React.useEffect(() => {
+    if (imageBitmap) {
+      const pixelSpacing = Math.abs(4 * (sValue / -0.1));
+      const totalHeight = imageBitmap.height * pixelSpacing;
+      // Center vertically around y=300
+      setOffsetY(Math.floor(300 - (totalHeight / 2)));
+    }
+  }, [imageBitmap, sValue]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -73,8 +84,8 @@ export const ImageConverter: React.FC = () => {
             
             genericObjects.push({
                 type: 'colorBlock',
-                x: x * pixelSpacing,
-                y: y * pixelSpacing,
+                x: offsetX + (x * pixelSpacing),
+                y: offsetY + (y * pixelSpacing),
                 color: `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`,
                 s: sValue
             });
@@ -149,16 +160,40 @@ export const ImageConverter: React.FC = () => {
         <input type="file" accept="image/*" onChange={handleFileChange} />
       </div>
 
-      <div className="input-group" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}>
-        <label htmlFor="s-value">Block Scale (s):</label>
-        <input 
-          id="s-value"
-          type="number" 
-          step="0.1" 
-          value={sValue} 
-          onChange={(e) => setSValue(parseFloat(e.target.value))}
-          style={{ padding: '5px', borderRadius: '4px', border: '1px solid #444', background: '#1a1a1a', color: 'white' }}
-        />
+      <div className="input-group" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <label htmlFor="s-value">Block Scale (s):</label>
+          <input 
+            id="s-value"
+            type="number" 
+            step="0.01" 
+            value={sValue} 
+            onChange={(e) => setSValue(parseFloat(e.target.value))}
+            style={{ padding: '5px', borderRadius: '4px', border: '1px solid #444', background: '#1a1a1a', color: 'white', width: '80px' }}
+          />
+        </div>
+        <div style={{ display: 'flex', gap: '20px' }}>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <label htmlFor="offset-x">Start X:</label>
+            <input 
+              id="offset-x"
+              type="number" 
+              value={offsetX} 
+              onChange={(e) => setOffsetX(parseFloat(e.target.value))}
+              style={{ padding: '5px', borderRadius: '4px', border: '1px solid #444', background: '#1a1a1a', color: 'white', width: '80px' }}
+            />
+          </div>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <label htmlFor="offset-y">Start Y:</label>
+            <input 
+              id="offset-y"
+              type="number" 
+              value={offsetY} 
+              onChange={(e) => setOffsetY(parseFloat(e.target.value))}
+              style={{ padding: '5px', borderRadius: '4px', border: '1px solid #444', background: '#1a1a1a', color: 'white', width: '80px' }}
+            />
+          </div>
+        </div>
       </div>
       
       {previewUrl && (
