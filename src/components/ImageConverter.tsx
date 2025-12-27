@@ -12,15 +12,18 @@ export const ImageConverter: React.FC = () => {
   const [warning, setWarning] = useState<string | null>(null);
   const [offsetX, setOffsetX] = useState<number>(200);
   const [offsetY, setOffsetY] = useState<number>(300);
+  const [scalePercent, setScalePercent] = useState<number | string>(100);
+  const [copyStatus, setCopyStatus] = useState<string | null>(null);
 
   React.useEffect(() => {
     if (imageBitmap) {
       const pixelSpacing = Math.abs(4 * (sValue / -0.1));
-      const totalHeight = imageBitmap.height * pixelSpacing;
+      const scale = typeof scalePercent === 'number' ? scalePercent : parseInt(scalePercent) || 100;
+      const totalHeight = (imageBitmap.height * (scale / 100)) * pixelSpacing;
       // Center vertically around y=300
       setOffsetY(Math.floor(300 - (totalHeight / 2)));
     }
-  }, [imageBitmap, sValue]);
+  }, [imageBitmap, sValue, scalePercent]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -31,21 +34,27 @@ export const ImageConverter: React.FC = () => {
     setWarning(null);
     setBlockCount(null);
     setJsonOutput('');
+    setScalePercent(100);
     
     try {
       const bitmap = await createImageBitmap(file);
       setImageBitmap(bitmap);
-
-      const { width, height } = bitmap;
-      const totalBlocks = width * height;
-
-      if (totalBlocks > LAG_WARNING_THRESHOLD) {
-          setWarning(`Warning: This image will generate approximately ${totalBlocks} blocks. Levels with more than ${LAG_WARNING_THRESHOLD} blocks may cause lag.`);
-      }
     } catch (error) {
       console.error("Error creating image bitmap:", error);
     }
   };
+
+  // Calculate estimated blocks based on current scale
+  const getScaleValue = () => typeof scalePercent === 'number' ? scalePercent : parseInt(scalePercent) || 0;
+  const estimatedBlocks = imageBitmap ? Math.floor((imageBitmap.width * (getScaleValue() / 100)) * (imageBitmap.height * (getScaleValue() / 100))) : 0;
+
+  React.useEffect(() => {
+    if (estimatedBlocks > LAG_WARNING_THRESHOLD) {
+      setWarning(`Warning: Current settings will generate approximately ${estimatedBlocks} blocks. Levels with more than ${LAG_WARNING_THRESHOLD} blocks may cause lag.`);
+    } else {
+      setWarning(null);
+    }
+  }, [estimatedBlocks]);
 
   const generateJson = () => {
     if (!imageBitmap) return;
@@ -54,7 +63,9 @@ export const ImageConverter: React.FC = () => {
     // Use setTimeout to allow UI to update
     setTimeout(() => {
         const canvas = document.createElement('canvas');
-        const { width, height } = imageBitmap;
+        const scale = getScaleValue();
+        const width = Math.floor(imageBitmap.width * (scale / 100));
+        const height = Math.floor(imageBitmap.height * (scale / 100));
         
         canvas.width = width;
         canvas.height = height;
@@ -144,13 +155,44 @@ export const ImageConverter: React.FC = () => {
     a.click();
   };
 
-  const copyToClipboard = () => {
+  const copyToClipboard = async () => {
     if (!jsonOutput) return;
-    navigator.clipboard.writeText(jsonOutput).then(() => {
-        // Optional: Show a toast or small notification
-    }).catch(err => {
-        console.error('Failed to copy: ', err);
-    });
+    
+    try {
+      await navigator.clipboard.writeText(jsonOutput);
+      setCopyStatus('Copied!');
+      setTimeout(() => setCopyStatus(null), 2000);
+    } catch (err) {
+      console.error('Clipboard API failed, trying fallback: ', err);
+      // Fallback for mobile/older browsers
+      try {
+        const textArea = document.createElement("textarea");
+        textArea.value = jsonOutput;
+        
+        // Ensure it's not visible but part of the DOM
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
+        textArea.style.top = "0";
+        document.body.appendChild(textArea);
+        
+        textArea.focus();
+        textArea.select();
+        
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        
+        if (successful) {
+          setCopyStatus('Copied!');
+          setTimeout(() => setCopyStatus(null), 2000);
+        } else {
+          throw new Error('Fallback failed');
+        }
+      } catch (fallbackErr) {
+        console.error('Fallback failed: ', fallbackErr);
+        setCopyStatus('Failed to copy');
+        setTimeout(() => setCopyStatus(null), 2000);
+      }
+    }
   };
 
   return (
@@ -169,6 +211,29 @@ export const ImageConverter: React.FC = () => {
             step="0.01" 
             value={sValue} 
             onChange={(e) => setSValue(parseFloat(e.target.value))}
+            style={{ padding: '5px', borderRadius: '4px', border: '1px solid #444', background: '#1a1a1a', color: 'white', width: '80px' }}
+          />
+        </div>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <label htmlFor="img-scale">Image Scale (%):</label>
+          <input 
+            id="img-scale"
+            type="number" 
+            step="1"
+            min="1"
+            max="100"
+            value={scalePercent} 
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val === '') {
+                setScalePercent('');
+              } else {
+                const num = parseInt(val);
+                if (!isNaN(num)) {
+                  setScalePercent(Math.min(100, Math.max(1, num)));
+                }
+              }
+            }}
             style={{ padding: '5px', borderRadius: '4px', border: '1px solid #444', background: '#1a1a1a', color: 'white', width: '80px' }}
           />
         </div>
@@ -212,7 +277,7 @@ export const ImageConverter: React.FC = () => {
           marginBottom: '15px',
           fontSize: '0.9em'
         }}>
-          {warning}
+          <p style={{ margin: 0 }}>{warning}</p>
         </div>
       )}
 
@@ -232,9 +297,9 @@ export const ImageConverter: React.FC = () => {
         <div style={{ display: 'flex', gap: '10px', marginTop: '10px', justifyContent: 'center' }}>
           <button 
             onClick={copyToClipboard}
-            style={{ padding: '8px 16px', fontSize: '14px', cursor: 'pointer', backgroundColor: '#4CAF50' }}
+            style={{ padding: '8px 16px', fontSize: '14px', cursor: 'pointer', backgroundColor: copyStatus === 'Failed to copy' ? '#f44336' : '#4CAF50' }}
           >
-            Copy to Clipboard
+            {copyStatus || 'Copy to Clipboard'}
           </button>
           <button 
             onClick={downloadJson}
