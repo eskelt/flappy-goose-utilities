@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const MAX_BLOCKS = 2000;
+const LAG_WARNING_THRESHOLD = 2000;
 
 export const ImageConverter: React.FC = () => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -25,17 +25,11 @@ export const ImageConverter: React.FC = () => {
       const bitmap = await createImageBitmap(file);
       setImageBitmap(bitmap);
 
-      let { width, height } = bitmap;
-      // Apply same scaling logic as generateJson to be accurate
-      if (width > MAX_BLOCKS || height > MAX_BLOCKS) {
-          const scale = Math.min(MAX_BLOCKS / width, MAX_BLOCKS / height);
-          width = Math.floor(width * scale);
-          height = Math.floor(height * scale);
-      }
+      const { width, height } = bitmap;
       const totalBlocks = width * height;
 
-      if (totalBlocks > 2000) {
-          setWarning(`Warning: This image will generate approximately ${totalBlocks} blocks. Levels with more than 2000 blocks may cause lag.`);
+      if (totalBlocks > LAG_WARNING_THRESHOLD) {
+          setWarning(`Warning: This image will generate approximately ${totalBlocks} blocks. Levels with more than ${LAG_WARNING_THRESHOLD} blocks may cause lag.`);
       }
     } catch (error) {
       console.error("Error creating image bitmap:", error);
@@ -49,14 +43,7 @@ export const ImageConverter: React.FC = () => {
     // Use setTimeout to allow UI to update
     setTimeout(() => {
         const canvas = document.createElement('canvas');
-        let { width, height } = imageBitmap;
-        let scale = 1;
-        
-        if (width > MAX_BLOCKS || height > MAX_BLOCKS) {
-            scale = Math.min(MAX_BLOCKS / width, MAX_BLOCKS / height);
-            width = Math.floor(width * scale);
-            height = Math.floor(height * scale);
-        }
+        const { width, height } = imageBitmap;
         
         canvas.width = width;
         canvas.height = height;
