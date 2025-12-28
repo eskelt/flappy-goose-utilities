@@ -56,8 +56,9 @@ export const ImageConverter: React.FC = () => {
     }
   }, [estimatedBlocks]);
 
-  const generateJson = () => {
+  const generateJson = (onlyBlocks: boolean | React.MouseEvent = false) => {
     if (!imageBitmap) return;
+    const isBlocksMode = typeof onlyBlocks === 'boolean' ? onlyBlocks : false;
     setIsGenerating(true);
 
     // Use setTimeout to allow UI to update
@@ -103,43 +104,51 @@ export const ImageConverter: React.FC = () => {
             }
         }
 
-        const level = {
-            name: 'My Custom Level',
-            description: '',
-            version: 1.702,
-            scrollSpeed: 2.4,
-            gravity: 0.4,
-            antigravity: false,
-            yTrack: false,
-            gradientTopColor: '#009dff',
-            gradientBottomColor: '#c2ccff',
-            disableBackgroundMusic: false,
-            midiConfig: {
-            restartOnDeath: false,
-            volume: 100
-            },
-            birdStartX: 100,
-            birdStartY: 300,
-            pipes: [],
-            bullets: [],
-            bulletTriggers: [],
-            layers: {
-            currentLayer: 1,
-            maxLayers: 3
-            },
-            genericObjects,
-            finishLineX: 1559,
-            completionRequirement: {
-            type: 'crossFinishLine'
-            },
-            propelFlap: false,
-            propelFlapForceX: 8,
-            propelFlapForceY: -8,
-            floor: false
-        };
+        if (isBlocksMode) {
+            const jsonStr = JSON.stringify(genericObjects, null, 2);
+            // Remove the enclosing brackets [ ] to match user request of just the blocks
+            const content = jsonStr.length > 2 ? jsonStr.substring(1, jsonStr.length - 1).trim() : '';
+            setJsonOutput(content);
+        } else {
+            const level = {
+                name: 'My Custom Level',
+                description: '',
+                version: 1.702,
+                scrollSpeed: 2.4,
+                gravity: 0.4,
+                antigravity: false,
+                yTrack: false,
+                gradientTopColor: '#009dff',
+                gradientBottomColor: '#c2ccff',
+                disableBackgroundMusic: false,
+                midiConfig: {
+                restartOnDeath: false,
+                volume: 100
+                },
+                birdStartX: 100,
+                birdStartY: 300,
+                pipes: [],
+                bullets: [],
+                bulletTriggers: [],
+                layers: {
+                currentLayer: 1,
+                maxLayers: 3
+                },
+                genericObjects,
+                finishLineX: 1559,
+                completionRequirement: {
+                type: 'crossFinishLine'
+                },
+                propelFlap: false,
+                propelFlapForceX: 8,
+                propelFlapForceY: -8,
+                floor: false
+            };
 
-        const jsonStr = JSON.stringify(level, null, 2);
-        setJsonOutput(jsonStr);
+            const jsonStr = JSON.stringify(level, null, 2);
+            setJsonOutput(jsonStr);
+        }
+        
         setBlockCount(genericObjects.length);
         
         setIsGenerating(false);
@@ -281,13 +290,22 @@ export const ImageConverter: React.FC = () => {
         </div>
       )}
 
-      <button 
-        onClick={generateJson} 
-        disabled={!imageBitmap || isGenerating}
-        style={{ padding: '10px 20px', fontSize: '16px', cursor: 'pointer' }}
-      >
-        {isGenerating ? 'Generating...' : 'Generate JSON'}
-      </button>
+      <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginBottom: '10px' }}>
+        <button 
+            onClick={() => generateJson(false)} 
+            disabled={!imageBitmap || isGenerating}
+            style={{ padding: '10px 20px', fontSize: '16px', cursor: 'pointer' }}
+        >
+            {isGenerating ? 'Generating...' : 'Generate Level JSON'}
+        </button>
+        <button 
+            onClick={() => generateJson(true)} 
+            disabled={!imageBitmap || isGenerating}
+            style={{ padding: '10px 20px', fontSize: '16px', cursor: 'pointer', backgroundColor: '#9c27b0' }}
+        >
+            {isGenerating ? 'Generating...' : 'Generate Blocks Only'}
+        </button>
+      </div>
 
       {blockCount !== null && (
         <p style={{ margin: '10px 0', color: '#aaa' }}>Generated {blockCount} blocks</p>
